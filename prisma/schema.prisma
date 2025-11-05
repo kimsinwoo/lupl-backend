@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  phone     String?
+  address   Json?    // 주소 정보를 JSON 형태로 저장
+  role      String   @default("user")
+  
+  // 소셜 로그인 필드
+  provider      String?  // 'google', 'kakao', 'naver'
+  providerId    String?  // 소셜 플랫폼의 고유 ID
+  profileImage  String?  // 프로필 이미지 URL
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  carts      Cart[]
+  orders     Order[]
+  reviews    Review[]
+  favorites  Favorite[]
+
+  @@index([provider, providerId])
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String     @id @default(cuid())
+  name        String
+  nameEn      String?
+  description String?    @db.Text
+  price       Float
+  sku         String?    @unique
+  slug        String     @unique
+  status      String     @default("active")
+  images      Json
+  
+  categoryId  String?
+  category    Category?  @relation(fields: [categoryId], references: [id])
+  
+  artistId    String?
+  artist      Artist?    @relation(fields: [artistId], references: [id])
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  carts      Cart[]
+  variants    ProductVariant[]
+  orderItems  OrderItem[]
+  reviews     Review[]
+  favorites   Favorite[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  size      String
+  color     String?
+  stock     Int      @default(0)
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cartItems   CartItem[]
+  orderItems   OrderItem[]
+
+  @@map("product_variants")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  status        String      @default("pending")
+  paymentStatus String      @default("pending")
+  paymentMethod String?
+  
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  
+  shippingName  String
+  shippingPhone String
+  shippingAddress1 String
+  shippingAddress2 String?
+  shippingCity  String
+  shippingZip   String
+  shippingCountry String @default("KR")
+  
+  subtotal      Float
+  shipping      Float
+  tax           Float
+  total         Float
+  
+  notes         String?
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id         String          @id @default(cuid())
+  quantity   Int             @default(1)
+  
+  cartId     String
+  cart       Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId  String
+  variant    ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@map("cart_items")
+}
+
+model OrderItem {
+  id          String           @id @default(cuid())
+  quantity    Int
+  price       Float
+  
+  orderId     String
+  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product          @relation(fields: [productId], references: [id])
+  variantId   String?
+  variant     ProductVariant?  @relation(fields: [variantId], references: [id])
+  
+  createdAt   DateTime         @default(now())
+
+  @@map("order_items")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?  @db.Text
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderId   String?  // 주문 ID (옵셔널)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reviews")
+}
+
+model Artist {
+  id          String    @id @default(cuid())
+  name        String
+  nameEn      String?
+  bio         String?   @db.Text
+  bioEn       String?   @db.Text
+  profileImage String?
+  portfolio   Json
+  exhibitions Json
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@map("artists")
+}
+
+model PortfolioCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  items       PortfolioItem[]
+
+  @@map("portfolio_categories")
+}
+
+model PortfolioItem {
+  id          String            @id @default(cuid())
+  title       String
+  description String?           @db.Text
+  year        Int?
+  images      Json
+  videoUrl    String?
+  featured    Boolean           @default(false)
+  
+  categoryId  String
+  category    PortfolioCategory @relation(fields: [categoryId], references: [id])
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("portfolio_items")
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  type        String   @default("notice")
+  featured    Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("announcements")
+}
+
+model Partner {
+  id          String   @id @default(cuid())
+  name        String
+  logo        String
+  link        String?
+  description String?  @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("partners")
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  subject     String?
+  message     String   @db.Text
+  status      String   @default("pending")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("contacts")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@map("favorites")
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  type      String   // findId, resetPassword
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email, code])
+  @@map("email_verifications")
+}
+
