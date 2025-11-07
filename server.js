@@ -41,20 +41,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/artists', require('./routes/artist.routes'));
-app.use('/api/portfolio', require('./routes/portfolio.routes'));
-app.use('/api/products', require('./routes/product.routes'));
-app.use('/api/categories', require('./routes/category.routes'));
-app.use('/api/cart', require('./routes/cart.routes'));
-app.use('/api/favorites', require('./routes/favorite.routes'));
-app.use('/api/orders', require('./routes/order.routes'));
-app.use('/api/reviews', require('./routes/review.routes'));
-app.use('/api/announcements', require('./routes/announcement.routes'));
-app.use('/api/partners', require('./routes/partner.routes'));
-app.use('/api/contact', require('./routes/contact.routes'));
-app.use('/api/payments', require('./routes/payment.routes'));
-app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/auth', require('./routes/auth.routes'));
+app.use('/artists', require('./routes/artist.routes'));
+app.use('/portfolio', require('./routes/portfolio.routes'));
+app.use('/products', require('./routes/product.routes'));
+app.use('/categories', require('./routes/category.routes'));
+app.use('/cart', require('./routes/cart.routes'));
+app.use('/favorites', require('./routes/favorite.routes'));
+app.use('/orders', require('./routes/order.routes'));
+app.use('/reviews', require('./routes/review.routes'));
+app.use('/announcements', require('./routes/announcement.routes'));
+app.use('/partners', require('./routes/partner.routes'));
+app.use('/contact', require('./routes/contact.routes'));
+app.use('/payments', require('./routes/payment.routes'));
+app.use('/admin', require('./routes/admin.routes'));
 
 // Health check
 app.get('/health', (req, res) => {
