@@ -55,60 +55,74 @@ const createOrder = async (userId, orderData) => {
     shippingZip,
     shippingCountry,
     paymentMethod,
-    notes,
-    items
+    notes
   } = orderData;
 
-  if (!items || items.length === 0) {
-    throw new Error('Order is empty');
+  console.log('📦 Creating order for userId:', userId);
+
+  // Get user's cart
+  const carts = await prisma.cart.findMany({
+    where: { userId },
+    include: {
+      product: true,
+      items: {
+        include: {
+          variant: {
+            include: {
+              product: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  console.log('🛒 Found carts:', carts.length);
+  carts.forEach((cart, idx) => {
+    console.log(`🛒 Cart ${idx}:`, {
+      id: cart.id,
+      productId: cart.productId,
+      productName: cart.product?.name,
+      itemsCount: cart.items?.length || 0
+    });
+  });
+
+  if (carts.length === 0) {
+    throw new Error('Cart is empty');
   }
 
   // Calculate totals
   let subtotal = 0;
   const orderItems = [];
 
-  for (const item of items) {
-    const product = await prisma.product.findUnique({
-      where: { id: item.productId },
-      include: { variants: true }
-    });
+  for (const cart of carts) {
+    for (const item of cart.items) {
+      const price = item.variant.product.price;
+      const quantity = item.quantity;
+      subtotal += price * quantity;
 
-    if (!product) {
-      throw new Error(`Product not found: ${item.productId}`);
-    }
+      orderItems.push({
+        productId: cart.productId,
+        variantId: item.variantId,
+        quantity,
+        price
+      });
 
-    const price = product.price;
-    const quantity = item.quantity;
-    subtotal += price * quantity;
-
-    let variantId = null;
-    if (item.variantId) {
-      const variant = product.variants.find(v => v.id === item.variantId);
-      if (variant) {
-        variantId = variant.id;
-        
-        // Update stock
-        if (variant.stock < quantity) {
-          throw new Error(`Insufficient stock for ${product.name}`);
-        }
-        
-        await prisma.productVariant.update({
-          where: { id: variant.id },
-          data: { stock: variant.stock - quantity }
-        });
+      // Update stock
+      const newStock = item.variant.stock - quantity;
+      if (newStock < 0) {
+        throw new Error(`Insufficient stock for ${cart.product.name}`);
       }
-    }
 
-    orderItems.push({
-      productId: product.id,
-      variantId,
-      quantity,
-      price
-    });
+      await prisma.productVariant.update({
+        where: { id: item.variantId },
+        data: { stock: newStock }
+      });
+    }
   }
 
-  const shipping = 3000;
-  const tax = subtotal * 0.1;
+  const shipping = 3000; // Fixed shipping cost (₩3,000)
+  const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + shipping + tax;
 
   // Create order
@@ -141,6 +155,11 @@ const createOrder = async (userId, orderData) => {
         }
       }
     }
+  });
+
+  // Clear cart
+  await prisma.cart.deleteMany({
+    where: { userId }
   });
 
   return order;

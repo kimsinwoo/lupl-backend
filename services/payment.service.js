@@ -59,23 +59,52 @@ const cancelPayment = async (paymentKey, cancelReason) => {
   }
 };
 
-const processOrderPayment = async (orderId, paymentKey, amount, tossOrderId) => {
+const processOrderPayment = async (orderId, paymentKey, amount) => {
   try {
-    // 토스페이먼츠에 보낸 형식의 orderId 사용 (접두어 포함)
-    const finalOrderId = tossOrderId || orderId;
-    const paymentResult = await approvePayment(paymentKey, finalOrderId, amount);
+    console.log('🔑 Processing payment with orderId:', orderId);
     
-    // 실제 주문 ID로 DB 업데이트 (orderId는 이미 접두어 없이 전달됨)
+    // orderId에서 LUPL- 접두어 제거 (DB에서 찾기 위해)
+    const actualOrderId = orderId.startsWith('LUPL-') ? orderId.replace('LUPL-', '') : orderId;
+    console.log('🔑 Actual orderId for DB:', actualOrderId);
+    
+    // 주문 상태 확인 (이미 결제된 경우 처리)
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: actualOrderId },
+      include: {
+        user: true,
+        items: {
+          include: {
+            product: true,
+            variant: true
+          }
+        }
+      }
+    });
+
+    if (existingOrder && existingOrder.paymentStatus === 'paid') {
+      console.log('⚠️ Order already paid, returning existing order');
+      return {
+        order: existingOrder,
+        payment: { message: 'Already processed' }
+      };
+    }
+    
+    // 토스페이먼츠 결제 승인 (원본 orderId 사용)
+    const paymentResult = await approvePayment(paymentKey, orderId, amount);
+    
+    console.log('✅ Toss payment approved');
+    
+    // 주문 상태 업데이트 (actualOrderId 사용)
     // 결제 승인 시 받은 실제 금액(세금, 배송비 포함)을 total에 저장
     const finalAmount = Number(amount);
     console.log('💰 Storing final payment amount in DB:', {
-      orderId,
+      orderId: actualOrderId,
       amount: finalAmount,
       note: 'This includes tax, shipping, and all fees'
     });
     
     const order = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: actualOrderId },
       data: {
         paymentStatus: 'paid',
         status: 'processing',
@@ -92,31 +121,63 @@ const processOrderPayment = async (orderId, paymentKey, amount, tossOrderId) => 
       }
     });
 
+    console.log('✅ Order updated successfully');
+
     return {
       order,
       payment: paymentResult
     };
   } catch (error) {
-    // 실제 주문 ID로 DB 업데이트 (orderId는 이미 접두어 없이 전달됨)
-    // 결제 실패 시에도 amount가 있다면 total에 저장 (실패한 금액 기록)
-    const updateData = {
-      paymentStatus: 'failed'
-    };
+    console.error('❌ Payment processing error:', error);
     
-    // amount가 제공된 경우 실패한 결제 금액도 저장
-    if (amount) {
-      updateData.total = Number(amount);
-      console.log('💰 Storing failed payment amount in DB:', {
-        orderId,
-        amount: Number(amount),
-        note: 'Payment failed but amount recorded'
+    // "이미 처리된 결제" 에러는 무시 (중복 요청)
+    if (error.message && error.message.includes('이미 처리된 결제')) {
+      console.log('⚠️ Payment already processed, ignoring error');
+      const actualOrderId = orderId.startsWith('LUPL-') ? orderId.replace('LUPL-', '') : orderId;
+      const existingOrder = await prisma.order.findUnique({
+        where: { id: actualOrderId },
+        include: {
+          user: true,
+          items: {
+            include: {
+              product: true,
+              variant: true
+            }
+          }
+        }
       });
+      if (existingOrder) {
+        return {
+          order: existingOrder,
+          payment: { message: 'Already processed' }
+        };
+      }
     }
     
-    await prisma.order.update({
-      where: { id: orderId },
-      data: updateData
-    });
+    // 결제 실패 시 주문 상태 업데이트
+    try {
+      const actualOrderId = orderId.startsWith('LUPL-') ? orderId.replace('LUPL-', '') : orderId;
+      const updateData = {
+        paymentStatus: 'failed'
+      };
+      
+      // amount가 제공된 경우 실패한 결제 금액도 저장
+      if (amount) {
+        updateData.total = Number(amount);
+        console.log('💰 Storing failed payment amount in DB:', {
+          orderId: actualOrderId,
+          amount: Number(amount),
+          note: 'Payment failed but amount recorded'
+        });
+      }
+      
+      await prisma.order.update({
+        where: { id: actualOrderId },
+        data: updateData
+      });
+    } catch (updateError) {
+      console.error('❌ Failed to update order status:', updateError);
+    }
     
     throw error;
   }

@@ -123,11 +123,9 @@ const resetPassword = async (token, password) => {
   }
 };
 
-// 카카오 OAuth 코드로부터 Access Token 받기
 const getKakaoAccessTokenFromCode = async (code, state, redirectUri) => {
   try {
     const axios = require('axios');
-    // 카카오 클라이언트 정보 (환경 변수에서 가져오기)
     const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY;
     const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET;
     
@@ -669,7 +667,6 @@ const naverLogin = async (accessToken) => {
   }
 };
 
-// Send verification code for finding user ID
 const sendFindIdVerification = async (email) => {
   const user = await prisma.user.findUnique({
     where: { email }
@@ -683,12 +680,9 @@ const sendFindIdVerification = async (email) => {
   return true;
 };
 
-// Find user ID after email verification
 const findUserId = async (email, code) => {
-  // Verify code
   await emailService.verifyCode(email, code, 'findId');
   
-  // Get user email (ID is email in this case)
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
@@ -703,7 +697,6 @@ const findUserId = async (email, code) => {
   return { email: user.email };
 };
 
-// Send verification code for password reset
 const sendResetPasswordVerification = async (email) => {
   const user = await prisma.user.findUnique({
     where: { email }
@@ -717,12 +710,10 @@ const sendResetPasswordVerification = async (email) => {
   return true;
 };
 
-// Reset password after email verification
 const resetPasswordWithVerification = async (email, code, newPassword) => {
-  // Verify code
+
   await emailService.verifyCode(email, code, 'resetPassword');
   
-  // Find user
   const user = await prisma.user.findUnique({
     where: { email }
   });
@@ -731,10 +722,8 @@ const resetPasswordWithVerification = async (email, code, newPassword) => {
     throw new Error('User not found');
   }
 
-  // Hash new password
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-  // Update password
   await prisma.user.update({
     where: { id: user.id },
     data: { password: hashedPassword }

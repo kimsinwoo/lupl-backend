@@ -2,16 +2,13 @@ const paymentService = require('../services/payment.service');
 
 const confirmPayment = async (req, res, next) => {
   try {
-    const { paymentKey, orderId, amount, tossOrderId } = req.body;
+    const { paymentKey, orderId, amount } = req.body;
     
-    if (!paymentKey || !orderId || !amount) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: paymentKey, orderId, amount'
-      });
-    }
+    console.log('💰 Confirming payment:', { paymentKey, orderId, amount });
     
-    const result = await paymentService.processOrderPayment(orderId, paymentKey, amount, tossOrderId);
+    const result = await paymentService.processOrderPayment(orderId, paymentKey, amount);
+    
+    console.log('✅ Payment confirmed successfully');
     
     res.json({
       success: true,
@@ -19,7 +16,7 @@ const confirmPayment = async (req, res, next) => {
       message: 'Payment confirmed successfully'
     });
   } catch (error) {
-    console.error('Payment confirmation error:', error);
+    console.error('❌ Payment confirmation error:', error);
     next(error);
   }
 };
