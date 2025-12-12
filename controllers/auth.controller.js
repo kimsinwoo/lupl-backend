@@ -43,13 +43,25 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log('🔐 Login request for email:', email);
     const result = await authService.login(email, password);
+    
+    console.log('✅ Login successful - Response data:', {
+      userId: result.user?.id,
+      email: result.user?.email,
+      name: result.user?.name,
+      phone: result.user?.phone,
+      hasAddress: !!result.user?.address,
+      address: result.user?.address
+    });
+    
     res.json({
       success: true,
       data: result,
       message: 'Login successful'
     });
   } catch (error) {
+    console.error('❌ Login error:', error.message);
     next(error);
   }
 };
@@ -99,7 +111,14 @@ const kakaoLogin = async (req, res, next) => {
       const accessTokenFromCode = await authService.getKakaoAccessTokenFromCode(code, state, redirectUri);
       console.log('✅ Kakao: Access token received, getting user info...');
       const result = await authService.kakaoLogin(accessTokenFromCode);
-      console.log('✅ Kakao login successful:', result.user?.email || result.user?.name || 'Unknown');
+      console.log('✅ Kakao login successful - Response data:', {
+        userId: result.user?.id,
+        email: result.user?.email,
+        name: result.user?.name,
+        phone: result.user?.phone,
+        hasAddress: !!result.user?.address,
+        address: result.user?.address
+      });
       res.json({
         success: true,
         data: result,
@@ -118,7 +137,14 @@ const kakaoLogin = async (req, res, next) => {
     
     console.log('🔄 Kakao: Using direct access token...');
     const result = await authService.kakaoLogin(accessToken);
-    console.log('✅ Kakao login successful:', result.user?.email || result.user?.name || 'Unknown');
+    console.log('✅ Kakao login successful - Response data:', {
+      userId: result.user?.id,
+      email: result.user?.email,
+      name: result.user?.name,
+      phone: result.user?.phone,
+      hasAddress: !!result.user?.address,
+      address: result.user?.address
+    });
     res.json({
       success: true,
       data: result,
@@ -141,6 +167,14 @@ const googleLogin = async (req, res, next) => {
       });
     }
     const result = await authService.googleLogin(idToken);
+    console.log('✅ Google login successful - Response data:', {
+      userId: result.user?.id,
+      email: result.user?.email,
+      name: result.user?.name,
+      phone: result.user?.phone,
+      hasAddress: !!result.user?.address,
+      address: result.user?.address
+    });
     res.json({
       success: true,
       data: result,
@@ -163,7 +197,14 @@ const naverLogin = async (req, res, next) => {
       const accessTokenFromCode = await authService.getNaverAccessTokenFromCode(code, state, redirectUri);
       console.log('✅ Naver: Access token received, getting user info...');
       const result = await authService.naverLogin(accessTokenFromCode);
-      console.log('✅ Naver login successful:', result.user?.email || result.user?.name || 'Unknown');
+      console.log('✅ Naver login successful - Response data:', {
+        userId: result.user?.id,
+        email: result.user?.email,
+        name: result.user?.name,
+        phone: result.user?.phone,
+        hasAddress: !!result.user?.address,
+        address: result.user?.address
+      });
       res.json({
         success: true,
         data: result,
@@ -182,7 +223,14 @@ const naverLogin = async (req, res, next) => {
     
     console.log('🔄 Naver: Using direct access token...');
     const result = await authService.naverLogin(accessToken);
-    console.log('✅ Naver login successful:', result.user?.email || result.user?.name || 'Unknown');
+    console.log('✅ Naver login successful - Response data:', {
+      userId: result.user?.id,
+      email: result.user?.email,
+      name: result.user?.name,
+      phone: result.user?.phone,
+      hasAddress: !!result.user?.address,
+      address: result.user?.address
+    });
     res.json({
       success: true,
       data: result,
@@ -263,6 +311,47 @@ const resetPasswordWithVerification = async (req, res, next) => {
   }
 };
 
+const getProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await authService.getProfile(userId);
+    res.json({
+      success: true,
+      data: user,
+      message: 'Profile retrieved successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    console.log('📝 Update profile request:', {
+      userId,
+      body: req.body
+    });
+    
+    const user = await authService.updateProfile(userId, req.body);
+    
+    console.log('✅ Profile updated successfully:', {
+      userId: user.id,
+      name: user.name,
+      phone: user.phone
+    });
+    
+    res.json({
+      success: true,
+      data: user,
+      message: 'Profile updated successfully'
+    });
+  } catch (error) {
+    console.error('❌ Failed to update profile:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -275,6 +364,8 @@ module.exports = {
   sendFindIdVerification,
   findUserId,
   sendResetPasswordVerification,
-  resetPasswordWithVerification
+  resetPasswordWithVerification,
+  getProfile,
+  updateProfile
 };
 

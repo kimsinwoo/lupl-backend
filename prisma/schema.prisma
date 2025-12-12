@@ -56,7 +56,7 @@ model Product {
   slug        String     @unique
   status      String     @default("active")
   images      Json
-  
+  detailImage Json
   categoryId  String?
   category    Category?  @relation(fields: [categoryId], references: [id])
   

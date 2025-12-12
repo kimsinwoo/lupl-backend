@@ -54,7 +54,21 @@ const register = async (email, password, name, phone) => {
 
 const login = async (email, password) => {
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      phone: true,
+      address: true,
+      role: true,
+      provider: true,
+      providerId: true,
+      profileImage: true,
+      createdAt: true,
+      updatedAt: true,
+      password: true // 비밀번호 검증을 위해 필요
+    }
   });
 
   if (!user) {
@@ -84,7 +98,17 @@ const login = async (email, password) => {
     { expiresIn: process.env.JWT_EXPIRES_IN }
   );
 
+  // 비밀번호 제외하고 반환
   const { password: _, ...userWithoutPassword } = user;
+
+  console.log('✅ Login successful - User data:', {
+    id: userWithoutPassword.id,
+    email: userWithoutPassword.email,
+    name: userWithoutPassword.name,
+    phone: userWithoutPassword.phone,
+    hasAddress: !!userWithoutPassword.address,
+    address: userWithoutPassword.address
+  });
 
   return {
     user: userWithoutPassword,
@@ -231,6 +255,19 @@ const kakaoLogin = async (accessToken) => {
           : [
               { provider: 'kakao', providerId }
             ]
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        address: true,
+        role: true,
+        provider: true,
+        providerId: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -251,11 +288,14 @@ const kakaoLogin = async (accessToken) => {
             id: true,
             email: true,
             name: true,
+            phone: true,
+            address: true,
             role: true,
             provider: true,
             providerId: true,
             profileImage: true,
-            createdAt: true
+            createdAt: true,
+            updatedAt: true
           }
         });
         console.log('✅ Kakao: User created successfully:', user.id, user.email);
@@ -280,11 +320,14 @@ const kakaoLogin = async (accessToken) => {
               id: true,
               email: true,
               name: true,
+              phone: true,
+              address: true,
               role: true,
               provider: true,
               providerId: true,
               profileImage: true,
-              createdAt: true
+              createdAt: true,
+              updatedAt: true
             }
           });
         } else {
@@ -305,11 +348,14 @@ const kakaoLogin = async (accessToken) => {
           id: true,
           email: true,
           name: true,
+          phone: true,
+          address: true,
           role: true,
           provider: true,
           providerId: true,
           profileImage: true,
-          createdAt: true
+          createdAt: true,
+          updatedAt: true
         }
       });
     }
@@ -374,6 +420,19 @@ const googleLogin = async (idToken) => {
           { email },
           { provider: 'google', providerId }
         ]
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        address: true,
+        role: true,
+        provider: true,
+        providerId: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -393,11 +452,14 @@ const googleLogin = async (idToken) => {
             id: true,
             email: true,
             name: true,
+            phone: true,
+            address: true,
             role: true,
             provider: true,
             providerId: true,
             profileImage: true,
-            createdAt: true
+            createdAt: true,
+            updatedAt: true
           }
         });
       } catch (createError) {
@@ -413,11 +475,14 @@ const googleLogin = async (idToken) => {
               id: true,
               email: true,
               name: true,
+              phone: true,
+              address: true,
               role: true,
               provider: true,
               providerId: true,
               profileImage: true,
-              createdAt: true
+              createdAt: true,
+              updatedAt: true
             }
           });
         } else {
@@ -438,11 +503,14 @@ const googleLogin = async (idToken) => {
           id: true,
           email: true,
           name: true,
+          phone: true,
+          address: true,
           role: true,
           provider: true,
           providerId: true,
           profileImage: true,
-          createdAt: true
+          createdAt: true,
+          updatedAt: true
         }
       });
     }
@@ -564,6 +632,19 @@ const naverLogin = async (accessToken) => {
           { email },
           { provider: 'naver', providerId }
         ]
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        address: true,
+        role: true,
+        provider: true,
+        providerId: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -585,11 +666,13 @@ const naverLogin = async (accessToken) => {
             email: true,
             name: true,
             phone: true,
+            address: true,
             role: true,
             provider: true,
             providerId: true,
             profileImage: true,
-            createdAt: true
+            createdAt: true,
+            updatedAt: true
           }
         });
         console.log('✅ Naver: User created successfully:', user.id, user.email);
@@ -609,11 +692,13 @@ const naverLogin = async (accessToken) => {
               email: true,
               name: true,
               phone: true,
+              address: true,
               role: true,
               provider: true,
               providerId: true,
               profileImage: true,
-              createdAt: true
+              createdAt: true,
+              updatedAt: true
             }
           });
         } else {
@@ -636,11 +721,13 @@ const naverLogin = async (accessToken) => {
           email: true,
           name: true,
           phone: true,
+          address: true,
           role: true,
           provider: true,
           providerId: true,
           profileImage: true,
-          createdAt: true
+          createdAt: true,
+          updatedAt: true
         }
       });
     }
@@ -732,6 +819,83 @@ const resetPasswordWithVerification = async (email, code, newPassword) => {
   return true;
 };
 
+const getProfile = async (userId) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        address: true,
+        role: true,
+        provider: true,
+        providerId: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return user;
+  } catch (error) {
+    throw new Error('Failed to get profile: ' + error.message);
+  }
+};
+
+const updateProfile = async (userId, data) => {
+  try {
+    console.log('📝 updateProfile service called:', {
+      userId,
+      data
+    });
+
+    const { name, phone, address } = data;
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+
+    console.log('📝 Update data to be saved:', updateData);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        address: true,
+        role: true,
+        provider: true,
+        providerId: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    console.log('✅ User updated in database:', {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      address: user.address
+    });
+
+    return user;
+  } catch (error) {
+    console.error('❌ Database update error:', error);
+    throw new Error('Failed to update profile: ' + error.message);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -745,6 +909,8 @@ module.exports = {
   sendFindIdVerification,
   findUserId,
   sendResetPasswordVerification,
-  resetPasswordWithVerification
+  resetPasswordWithVerification,
+  getProfile,
+  updateProfile
 };
 

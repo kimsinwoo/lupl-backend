@@ -42,6 +42,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/auth', require('./routes/auth.routes'));
+app.use('/users', require('./routes/user.routes'));
 app.use('/artists', require('./routes/artist.routes'));
 app.use('/portfolio', require('./routes/portfolio.routes'));
 app.use('/products', require('./routes/product.routes'));
